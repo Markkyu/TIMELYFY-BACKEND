@@ -1,71 +1,180 @@
+// const express = require("express");
+// const userRouter = express.Router();
+// const connection = require("../config/db");
+
+// // ROUTE: /api/users
+
+// // Get all users
+// userRouter.get("/", (req, res) => {
+//   connection.query(
+//     "SELECT id, username, role, full_name, email, created_at FROM profiles",
+//     (err, rows) => {
+//       if (err) return res.status(500).json({ message: "Cannot fetch users" });
+
+//       res.status(200).json(rows);
+//     }
+//   );
+// });
+
+// // Get all users
+// userRouter.get("/:id", (req, res) => {
+//   const { id } = req.params;
+
+//   connection.query(
+//     "SELECT id, username, role, created_at FROM profiles WHERE id = ?",
+//     [id],
+//     (err, results) => {
+//       if (err) return res.status(500).json({ message: "Cannot fetch users" });
+//       if (results.length === 0)
+//         return res.status(404).json({ message: "User not found" });
+//       res.json(results[0]);
+//     }
+//   );
+// });
+
+// // ASSIGN ROLE to user
+// userRouter.put("/:user_id", (req, res) => {
+//   const { assignRole } = req.body;
+//   const { user_id } = req.params;
+
+//   connection.query(
+//     `UPDATE profiles SET role = ? WHERE id = ?`,
+//     [assignRole, user_id],
+//     (err, rows) => {
+//       if (err)
+//         return res
+//           .status(500)
+//           .json({ message: `An error has occurred: ${err.sqlMessage}` });
+
+//       res.status(200).json(`User Id ${user_id} role successfully updated.`);
+//     }
+//   );
+// });
+
+// userRouter.put("/:user_id/request-change-password", (req, res) => {
+//   const { user_id } = req.params;
+
+//   const sql = `
+//     UPDATE profiles
+//     SET change_password = "pending"
+//     WHERE id = ?
+//   `;
+
+//   connection.query(sql, [user_id], (err, result) => {
+//     if (err)
+//       return res
+//         .status(500)
+//         .json({ message: "Error requesting password change" });
+
+//     res.status(200).json({ message: "Password request successful" });
+//   });
+// });
+
+// userRouter.delete("/:user_id", (req, res) => {
+//   const { user_id } = req.params;
+//   connection.query(
+//     `DELETE FROM profiles WHERE id = ?`,
+//     [user_id],
+//     (err, result) => {
+//       if (err)
+//         return res
+//           .status(500)
+//           .json({ message: `An error has occurred: ${err.sqlMessage}` });
+//       if (result.affectedRows === 0)
+//         return res.status(404).json({ message: `User not found` });
+//       res.status(200).json({ message: `User Id: ${user_id} has been deleted` });
+//     }
+//   );
+// });
+
+// module.exports = userRouter;
+
 const express = require("express");
 const userRouter = express.Router();
-const connection = require("../config/db");
+const pool = require("../config/db");
 
 // ROUTE: /api/users
 
 // Get all users
-userRouter.get("/", (req, res) => {
-  connection.query(
-    "SELECT id, username, role, created_at FROM profiles",
-    (err, rows) => {
-      if (err) return res.status(500).json({ message: "Cannot fetch users" });
-
-      res.status(200).json(rows);
-    }
-  );
+userRouter.get("/", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, username, role, full_name, email, created_at FROM profiles"
+    );
+    res.status(200).json(rows);
+  } catch (error) {
+    res.status(500).json({ message: "Cannot fetch users" });
+  }
 });
 
-// Get all users
-userRouter.get("/:id", (req, res) => {
+// Get user by ID
+userRouter.get("/:id", async (req, res) => {
   const { id } = req.params;
 
-  connection.query(
-    "SELECT id, username, role, created_at FROM profiles WHERE id = ?",
-    [id],
-    (err, results) => {
-      if (err) return res.status(500).json({ message: "Cannot fetch users" });
-      if (results.length === 0)
-        return res.status(404).json({ message: "User not found" });
-      res.json(results[0]);
-    }
-  );
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, username, role, created_at FROM profiles WHERE id = ?",
+      [id]
+    );
+
+    if (rows.length === 0)
+      return res.status(404).json({ message: "User not found" });
+
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ message: "Cannot fetch users" });
+  }
 });
 
 // ASSIGN ROLE to user
-userRouter.put("/:user_id", (req, res) => {
+userRouter.put("/:user_id", async (req, res) => {
   const { assignRole } = req.body;
   const { user_id } = req.params;
 
-  connection.query(
-    `UPDATE profiles SET role = ? WHERE id = ?`,
-    [assignRole, user_id],
-    (err, rows) => {
-      if (err)
-        return res
-          .status(500)
-          .json({ message: `An error has occurred: ${err.sqlMessage}` });
+  try {
+    await pool.query("UPDATE profiles SET role = ? WHERE id = ?", [
+      assignRole,
+      user_id,
+    ]);
 
-      res.status(200).json(`User Id ${user_id} role successfully updated.`);
-    }
-  );
+    res.status(200).json(`User Id ${user_id} role successfully updated.`);
+  } catch (error) {
+    res.status(500).json({ message: `Error: ${error.message}` });
+  }
 });
 
-userRouter.delete("/:user_id", (req, res) => {
+// REQUEST CHANGE PASSWORD FLAG
+userRouter.put("/:user_id/request-change-password", async (req, res) => {
   const { user_id } = req.params;
-  connection.query(
-    `DELETE FROM profiles WHERE id = ?`,
-    [user_id],
-    (err, result) => {
-      if (err)
-        return res
-          .status(500)
-          .json({ message: `An error has occurred: ${err.sqlMessage}` });
-      if (result.affectedRows === 0)
-        return res.status(404).json({ message: `User not found` });
-      res.status(200).json({ message: `User Id: ${user_id} has been deleted` });
-    }
-  );
+
+  try {
+    await pool.query(
+      `UPDATE profiles SET change_password = "pending" WHERE id = ?`,
+      [user_id]
+    );
+
+    res.status(200).json({ message: "Password request successful" });
+  } catch (error) {
+    res.status(500).json({ message: "Error requesting password change" });
+  }
+});
+
+// DELETE USER
+userRouter.delete("/:user_id", async (req, res) => {
+  const { user_id } = req.params;
+
+  try {
+    const [result] = await pool.query("DELETE FROM profiles WHERE id = ?", [
+      user_id,
+    ]);
+
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json({ message: `User Id: ${user_id} has been deleted` });
+  } catch (error) {
+    res.status(500).json({ message: `Error: ${error.message}` });
+  }
 });
 
 module.exports = userRouter;

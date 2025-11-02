@@ -25,7 +25,7 @@ DELIMITER $$
 --
 -- Procedures
 --
-CREATE DEFINER=`root`@`localhost` PROCEDURE `generateRoomSchedule` (IN `p_room_id` VARCHAR(50), IN `p_room_name` VARCHAR(100))   BEGIN
+CREATE PROCEDURE `generateRoomSchedule` (IN `p_room_id` VARCHAR(50), IN `p_room_name` VARCHAR(100))   BEGIN
     DECLARE id_increment_slot INT DEFAULT 0; -- start from 1 (7:00 AM)
     DECLARE id_increment_day INT DEFAULT 0;  -- 0 = Monday
 
@@ -47,7 +47,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `generateRoomSchedule` (IN `p_room_i
     END WHILE;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `generateTeacherSchedule` (IN `new_teacher_id` INT)   BEGIN
+CREATE PROCEDURE `generateTeacherSchedule` (IN `new_teacher_id` INT)   BEGIN
     DECLARE id_increment_slot INT DEFAULT 0;  -- start at 0 (7:00 AM)
     DECLARE id_increment_day INT DEFAULT 0;   -- 0 = Monday
 
@@ -242,14 +242,15 @@ INSERT INTO `phase_control` (`phase_id`, `phase_year`, `phase_sem`, `phase_super
 --
 
 CREATE TABLE `profiles` (
-  `id` int(11) NOT NULL,
-  `username` text NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
   `password` text NOT NULL DEFAULT 'user',
   `role` enum('admin','master_scheduler','super_user','user') NOT NULL DEFAULT 'user',
   `email` varchar(50) NOT NULL,
   `full_name` varchar(50) NOT NULL,
   `created_at` date NOT NULL DEFAULT current_timestamp(),
-  `change_password` enum('no','pending','approved') DEFAULT 'no'
+  `change_password` enum('no','pending','approved') DEFAULT 'no',
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -472,8 +473,8 @@ CREATE TABLE `schedules` (
 
 CREATE TABLE `teachers` (
   `teacher_id` int(11) NOT NULL,
-  `first_name` text NOT NULL,
-  `last_name` text NOT NULL,
+  `first_name` varchar(50) NOT NULL,
+  `last_name` varchar(50) NOT NULL,
   `department` int(11) DEFAULT NULL,
   `teacher_availability` enum('full','custom') NOT NULL DEFAULT 'full'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

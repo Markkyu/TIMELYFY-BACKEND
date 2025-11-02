@@ -15,10 +15,13 @@ function verifyRole(allowedRoles = []) {
       const decoded = jwt.verify(token, JWT_SECRET);
       req.user = decoded; // attach user info (id, role)
 
-      if (!allowedRoles.includes(decoded.role))
-        return res
-          .status(403)
-          .json({ message: "Access denied: insufficient role" });
+      if (!allowedRoles.includes("*")) {
+        if (!allowedRoles.includes(decoded.role)) {
+          return res
+            .status(403)
+            .json({ message: "Access denied: insufficient role" });
+        }
+      }
 
       next();
     } catch (err) {
