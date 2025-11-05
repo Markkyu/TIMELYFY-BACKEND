@@ -309,6 +309,9 @@
 const express = require("express");
 const scheduleRouter = express.Router();
 const pool = require("../config/db");
+const axios = require("axios");
+
+// ROUTE: /api/schedules
 
 // GET schedule from a specific class group, year, sem
 scheduleRouter.get("/:college/filter", async (req, res) => {
@@ -332,8 +335,51 @@ scheduleRouter.get("/:college/filter", async (req, res) => {
   }
 });
 
-// Run the scheduler
-// scheduleRouter.post("");
+// GET schedule of the teacher
+scheduleRouter.get("/teacher/:teacher_id", async (req, res) => {
+  const { teacher_id } = req.params;
+
+  const sql = `
+    SELECT *
+    FROM teacher_schedules ts
+    LEFT JOIN teachers t
+    ON t.teacher_id = ts.teacher_id
+    LEFT JOIN courses c
+    ON c.course_id = ts.slot_course
+    WHERE ts.slot_course NOT IN ("0","2") 
+    AND ts.teacher_id = ?
+  `;
+
+  try {
+    const [rows] = await pool.query(sql, [teacher_id]);
+    res.status(200).json(rows);
+  } catch (error) {
+    res.status(500).json({ message: `Error: ${error.message}` });
+  }
+});
+
+// GET schedule of the room
+scheduleRouter.get("/room/:room_id", async (req, res) => {
+  const { room_id } = req.params;
+
+  const sql = `
+    SELECT * 
+    FROM room_schedules rs
+    INNER JOIN rooms r
+    ON r.room_id = rs.room_id
+    INNER JOIN courses c
+    ON c.course_id = rs.slot_course
+    WHERE rs.slot_course NOT IN ("0","2")
+    AND rs.room_id = 6
+  `;
+
+  try {
+    const [rows] = await pool.query(sql, [room_id]);
+    res.status(200).json(rows);
+  } catch (error) {
+    res.status(500).json({ message: `Error: ${error.message}` });
+  }
+});
 
 // Plot schedules
 scheduleRouter.post("/plot", async (req, res) => {
@@ -374,7 +420,7 @@ scheduleRouter.post("/plot", async (req, res) => {
     for (const s of schedules) {
       await conn.query(roomSQL, [
         s.slot_course,
-        s.room_ID,
+        s.room_id,
         s.slot_day,
         s.slot_time,
       ]);
@@ -446,6 +492,36 @@ scheduleRouter.post("/unplot", async (req, res) => {
   }
 });
 
+let schedulerRunning = false;
+
+scheduleRouter.put("/execute-scheduler", async (req, res) => {
+  const newSchedules = req.body;
+
+  if (schedulerRunning) {
+    return res
+      .status(409)
+      .json({ message: "Scheduler is already running. Please wait..." });
+  }
+
+  schedulerRunning = true;
+
+  if (!Array.isArray(newSchedules) || newSchedules.length === 0)
+    return res.status(400).json({ message: "Schedules cannot be empty" });
+
+  try {
+    const { data } = await axios.put(
+      `${process.env.SCHEDULER_API}/update_schedules`,
+      newSchedules
+    );
+
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ message: "Scheduler Error" });
+  } finally {
+    schedulerRunning = false;
+  }
+});
+
 // Update schedules
 scheduleRouter.put("/", async (req, res) => {
   const schedules = req.body;
@@ -475,10 +551,10 @@ scheduleRouter.put("/", async (req, res) => {
 scheduleRouter.delete("/reset-all", async (req, res) => {
   try {
     await pool.query(
-      `UPDATE teacher_schedules SET slot_course = 0 WHERE slot_course NOT IN (0, 2)`
+      `UPDATE teacher_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
     );
     await pool.query(
-      `UPDATE room_schedules SET slot_course = 0 WHERE slot_course NOT IN (0, 2)`
+      `UPDATE room_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
     );
 
     const [result] = await pool.query(`

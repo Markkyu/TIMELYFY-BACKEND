@@ -227,21 +227,21 @@ teacherRouter.get("/schedule/:teacherId", async (req, res) => {
 });
 
 // SEARCH Teacher by name
-teacherRouter.get("/:teacher_name", async (req, res) => {
-  const { teacher_name } = req.params;
+teacherRouter.get("/:teacher_id", async (req, res) => {
+  const { teacher_id } = req.params;
 
   try {
     const [rows] = await pool.query(
-      "SELECT * FROM teachers WHERE first_name = ?",
-      [teacher_name]
+      "SELECT * FROM teachers WHERE teacher_id = ?",
+      [teacher_id]
     );
 
     if (rows.length === 0)
       return res
         .status(404)
-        .json({ message: `Teacher ${teacher_name} not found` });
+        .json({ message: `Teacher with id: ${teacher_id} not found` });
 
-    res.status(200).json(rows);
+    res.status(200).json(rows[0]);
   } catch (err) {
     res.status(500).json({ message: `Error: ${err.message}` });
   }

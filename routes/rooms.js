@@ -207,15 +207,15 @@ roomRouter.get("/:id", async (req, res) => {
 // CREATE new room
 roomRouter.post("/", async (req, res) => {
   try {
-    const { room_name, capacity, room_type } = req.body;
+    const { room_name } = req.body;
 
-    if (!room_name || !capacity || !room_type) {
+    if (!room_name) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     const [result] = await pool.query(
-      "INSERT INTO rooms (room_name, capacity, room_type) VALUES (?, ?, ?)",
-      [room_name, capacity, room_type]
+      "INSERT INTO rooms (room_name) VALUES (?)",
+      [room_name]
     );
 
     res.status(201).json({
@@ -231,11 +231,11 @@ roomRouter.post("/", async (req, res) => {
 roomRouter.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { room_name, capacity, room_type } = req.body;
+    const { room_name } = req.body;
 
     const [result] = await pool.query(
-      "UPDATE rooms SET room_name = ?, capacity = ?, room_type = ? WHERE room_id = ?",
-      [room_name, capacity, room_type, id]
+      "UPDATE rooms SET room_name = ? WHERE room_id = ?",
+      [room_name, id]
     );
 
     if (result.affectedRows === 0)
