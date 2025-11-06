@@ -201,7 +201,7 @@ collegesRouter.get("/", verifyRole(["*"]), async (req, res) => {
 
     if (role === "user") {
       sql = `
-        SELECT c.college_id, c.college_name
+        SELECT *  
         FROM user_programs up
         INNER JOIN colleges c
           ON c.college_id = up.program_id 
@@ -243,11 +243,11 @@ collegesRouter.get("/:college_id", async (req, res) => {
 // Create a college
 collegesRouter.post("/", async (req, res) => {
   try {
-    const { college_name, college_major } = req.body;
+    const { college_code, college_name, college_major } = req.body;
 
     const [result] = await db.execute(
-      "INSERT INTO colleges (college_name, college_major) VALUES (?, ?)",
-      [college_name, college_major]
+      "INSERT INTO colleges (college_code, college_name, college_major) VALUES (?, ?, ?)",
+      [college_code, college_name, college_major]
     );
 
     return res.status(201).json({
@@ -263,11 +263,11 @@ collegesRouter.post("/", async (req, res) => {
 collegesRouter.put("/:college_id", async (req, res) => {
   try {
     const { college_id } = req.params;
-    const { college_name, college_major } = req.body;
+    const { college_code, college_name, college_major } = req.body;
 
     const [result] = await db.execute(
-      "UPDATE colleges SET college_name = ?, college_major = ? WHERE college_id = ?",
-      [college_name, college_major, college_id]
+      "UPDATE colleges SET college_code = ?, college_name = ?, college_major = ? WHERE college_id = ?",
+      [college_code, college_name, college_major, college_id]
     );
 
     if (result.affectedRows === 0)

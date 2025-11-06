@@ -328,8 +328,9 @@ courseRouter.get("/:department", async (req, res) => {
   try {
     const { department } = req.params;
 
+    // SELECT course_surrogate_id, course_id, course_code, course_name, hours_week, course_year, course_college, semester, first_name, last_name, room_name, created_by, is_plotted
     const sql = `
-      SELECT course_surrogate_id, course_id, course_code, course_name, hours_week, course_year, course_college, semester, first_name, last_name, room_name, created_by, is_plotted
+      SELECT *
       FROM courses c
       LEFT JOIN teachers t ON c.assigned_teacher = t.teacher_id
       LEFT JOIN rooms r ON c.assigned_room = r.room_id

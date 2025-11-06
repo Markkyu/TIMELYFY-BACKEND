@@ -335,6 +335,50 @@ scheduleRouter.get("/:college/filter", async (req, res) => {
   }
 });
 
+scheduleRouter.get(
+  "/teacher-schedule-conflict/:teacher_id",
+  async (req, res) => {
+    const { teacher_id } = req.params;
+    const { year, sem, college } = req.query;
+
+    const sql = `
+    SELECT ts.slot_course, ts.slot_day, ts.slot_time, c.course_name
+    FROM teacher_schedules ts
+    INNER JOIN courses c ON ts.slot_course = c.course_id 
+    WHERE ts.teacher_id = ?
+    AND (c.course_college != 1 OR c.course_year != 1 OR c.semester != 1);
+  `;
+
+    try {
+      const [rows] = await pool.query(sql, [college, year, sem]);
+      res.status(200).json(rows);
+    } catch (err) {
+      res.status(500).json({ message: `Error: ${err.message}` });
+    }
+  }
+);
+
+// GET schedule of the class group
+scheduleRouter.get("/college/:classId", async (req, res) => {
+  const { classId } = req.params;
+
+  const sql = `
+    SELECT *
+    FROM class_schedules cs
+    LEFT JOIN courses c
+    ON c.course_id = cs.slot_course
+    WHERE cs.slot_course NOT IN ("0", "2")
+    AND cs.class_id = ?
+  `;
+
+  try {
+    const [rows] = await pool.query(sql, [classId]);
+    res.status(200).json(rows);
+  } catch (error) {
+    res.status(500).json({ message: `Error: ${error.message}` });
+  }
+});
+
 // GET schedule of the teacher
 scheduleRouter.get("/teacher/:teacher_id", async (req, res) => {
   const { teacher_id } = req.params;
@@ -346,6 +390,8 @@ scheduleRouter.get("/teacher/:teacher_id", async (req, res) => {
     ON t.teacher_id = ts.teacher_id
     LEFT JOIN courses c
     ON c.course_id = ts.slot_course
+    LEFT JOIN rooms r
+    ON r.room_id = c.assigned_room
     WHERE ts.slot_course NOT IN ("0","2") 
     AND ts.teacher_id = ?
   `;
@@ -370,7 +416,7 @@ scheduleRouter.get("/room/:room_id", async (req, res) => {
     INNER JOIN courses c
     ON c.course_id = rs.slot_course
     WHERE rs.slot_course NOT IN ("0","2")
-    AND rs.room_id = 6
+    AND rs.room_id = ?
   `;
 
   try {
@@ -384,6 +430,9 @@ scheduleRouter.get("/room/:room_id", async (req, res) => {
 // Plot schedules
 scheduleRouter.post("/plot", async (req, res) => {
   const schedules = req.body;
+
+  console.log(schedules);
+
   if (!Array.isArray(schedules) || schedules.length === 0)
     return res
       .status(400)
@@ -393,6 +442,12 @@ scheduleRouter.post("/plot", async (req, res) => {
 
   try {
     await conn.beginTransaction();
+
+    const classSQL = `
+      UPDATE class_schedules
+      SET slot_course = ?
+      WHERE class_id = ? AND slot_day = ? AND slot_time = ?
+    `;
 
     const teacherSQL = `
       UPDATE teacher_schedules
@@ -405,6 +460,16 @@ scheduleRouter.post("/plot", async (req, res) => {
       SET slot_course = ?
       WHERE room_id = ? AND slot_day = ? AND slot_time = ?
     `;
+
+    // Update class schedules
+    for (const s of schedules) {
+      await conn.query(classSQL, [
+        s.slot_course,
+        s.class_id,
+        s.slot_day,
+        s.slot_time,
+      ]);
+    }
 
     // Update teacher schedules
     for (const s of schedules) {
@@ -466,6 +531,10 @@ scheduleRouter.post("/unplot", async (req, res) => {
     await conn.beginTransaction();
 
     await conn.query(
+      `UPDATE class_schedules SET slot_course = '0' WHERE slot_course IN (?)`,
+      [courseIds]
+    );
+    await conn.query(
       `UPDATE teacher_schedules SET slot_course = '0' WHERE slot_course IN (?)`,
       [courseIds]
     );
@@ -492,18 +561,10 @@ scheduleRouter.post("/unplot", async (req, res) => {
   }
 });
 
-let schedulerRunning = false;
-
 scheduleRouter.put("/execute-scheduler", async (req, res) => {
   const newSchedules = req.body;
 
-  if (schedulerRunning) {
-    return res
-      .status(409)
-      .json({ message: "Scheduler is already running. Please wait..." });
-  }
-
-  schedulerRunning = true;
+  console.log(newSchedules);
 
   if (!Array.isArray(newSchedules) || newSchedules.length === 0)
     return res.status(400).json({ message: "Schedules cannot be empty" });
@@ -517,39 +578,40 @@ scheduleRouter.put("/execute-scheduler", async (req, res) => {
     res.status(200).json(data);
   } catch (error) {
     res.status(500).json({ message: "Scheduler Error" });
-  } finally {
-    schedulerRunning = false;
   }
 });
 
 // Update schedules
-scheduleRouter.put("/", async (req, res) => {
-  const schedules = req.body;
-  if (!Array.isArray(schedules) || schedules.length === 0)
-    return res
-      .status(400)
-      .json({ message: "Newly plotted schedules cannot be empty" });
+// scheduleRouter.put("/", async (req, res) => {
+//   const schedules = req.body;
+//   if (!Array.isArray(schedules) || schedules.length === 0)
+//     return res
+//       .status(400)
+//       .json({ message: "Newly plotted schedules cannot be empty" });
 
-  const sql = `
-    UPDATE teacher_schedules
-    SET slot_course = ? 
-    WHERE slot_time = ? AND slot_day = ?
-  `;
+//   const sql = `
+//     UPDATE teacher_schedules
+//     SET slot_course = ?
+//     WHERE slot_time = ? AND slot_day = ?
+//   `;
 
-  try {
-    for (const s of schedules) {
-      await pool.query(sql, [s.slot_course, s.slot_time, s.slot_day]);
-    }
+//   try {
+//     for (const s of schedules) {
+//       await pool.query(sql, [s.slot_course, s.slot_time, s.slot_day]);
+//     }
 
-    res.status(200).json({ message: "Schedules updated successfully" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+//     res.status(200).json({ message: "Schedules updated successfully" });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// });
 
 // RESET ALL SCHEDULES
 scheduleRouter.delete("/reset-all", async (req, res) => {
   try {
+    await pool.query(
+      `UPDATE class_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
+    );
     await pool.query(
       `UPDATE teacher_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
     );
