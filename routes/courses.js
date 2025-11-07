@@ -448,26 +448,23 @@ courseRouter.put("/:course_surrogate_id", async (req, res) => {
       course_year,
       course_college,
       semester,
-      assigned_teacher = "0",
     } = req.body;
 
-    console.log(course_id);
-    console.log(course_code);
-    console.log(course_name);
-    console.log(hours_week);
-    console.log(course_year);
-    console.log(course_college);
-    console.log(semester);
-    console.log(assigned_teacher);
+    // console.log(course_id);
+    // console.log(course_code);
+    // console.log(course_name);
+    // console.log(hours_week);
+    // console.log(course_year);
+    // console.log(course_college);
+    // console.log(semester);
 
     const [result] = await db.execute(
-      `UPDATE courses SET course_id = ?, course_code = ?, course_name = ?, hours_week = ?, assigned_teacher = ? WHERE course_surrogate_id = ? AND course_year = ? AND semester = ? AND course_college = ?`,
+      `UPDATE courses SET course_id = ?, course_code = ?, course_name = ?, hours_week = ? WHERE course_surrogate_id = ? AND course_year = ? AND semester = ? AND course_college = ?`,
       [
         course_id,
         course_code,
         course_name,
         hours_week,
-        assigned_teacher,
         course_surrogate_id,
         course_year,
         semester,

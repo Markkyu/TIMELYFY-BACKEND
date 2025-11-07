@@ -431,7 +431,7 @@ scheduleRouter.get("/room/:room_id", async (req, res) => {
 scheduleRouter.post("/plot", async (req, res) => {
   const schedules = req.body;
 
-  console.log(schedules);
+  // console.log(schedules);
 
   if (!Array.isArray(schedules) || schedules.length === 0)
     return res
@@ -564,7 +564,7 @@ scheduleRouter.post("/unplot", async (req, res) => {
 scheduleRouter.put("/execute-scheduler", async (req, res) => {
   const newSchedules = req.body;
 
-  console.log(newSchedules);
+  // console.log(newSchedules);
 
   if (!Array.isArray(newSchedules) || newSchedules.length === 0)
     return res.status(400).json({ message: "Schedules cannot be empty" });
@@ -584,7 +584,7 @@ scheduleRouter.put("/execute-scheduler", async (req, res) => {
 });
 
 // FINAL CHECK SCHEDULE BEFORE SAVING TO DB
-scheduleRouter.put("/final_check_schedule", async (req, res) => {
+scheduleRouter.put("/final-check-schedule", async (req, res) => {
   const final_schedule = req.body; // array of schedules
   const final_conflict_list = [];
 
