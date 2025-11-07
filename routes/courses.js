@@ -397,14 +397,14 @@ courseRouter.post("/", async (req, res) => {
       created_by,
     } = req.body;
 
-    console.log(course_id);
-    console.log(course_code);
-    console.log(course_name);
-    console.log(hours_week);
-    console.log(course_college);
-    console.log(semester);
-    console.log(assigned_teacher);
-    console.log(created_by);
+    console.log("courseId", typeof course_id);
+    console.log("course name", typeof course_name);
+    console.log("course code", typeof course_code);
+    console.log("hour", typeof hours_week);
+    console.log("college", typeof course_college);
+    console.log("sem", typeof semester);
+    console.log("ass", typeof assigned_teacher);
+    console.log("c", typeof created_by);
 
     if (hours_week < 1 || hours_week > 8) {
       return res

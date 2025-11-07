@@ -575,36 +575,88 @@ scheduleRouter.put("/execute-scheduler", async (req, res) => {
       newSchedules
     );
 
+    console.log(data);
+
     res.status(200).json(data);
   } catch (error) {
     res.status(500).json({ message: "Scheduler Error" });
   }
 });
 
-// Update schedules
-// scheduleRouter.put("/", async (req, res) => {
-//   const schedules = req.body;
-//   if (!Array.isArray(schedules) || schedules.length === 0)
-//     return res
-//       .status(400)
-//       .json({ message: "Newly plotted schedules cannot be empty" });
+// FINAL CHECK SCHEDULE BEFORE SAVING TO DB
+scheduleRouter.put("/final_check_schedule", async (req, res) => {
+  const final_schedule = req.body; // array of schedules
+  const final_conflict_list = [];
 
-//   const sql = `
-//     UPDATE teacher_schedules
-//     SET slot_course = ?
-//     WHERE slot_time = ? AND slot_day = ?
-//   `;
+  const connection = await pool.getConnection();
 
-//   try {
-//     for (const s of schedules) {
-//       await pool.query(sql, [s.slot_course, s.slot_time, s.slot_day]);
-//     }
+  try {
+    for (const course of final_schedule) {
+      let conflict_types = []; // can contain multiple: ["room", "teacher", "class"]
 
-//     res.status(200).json({ message: "Schedules updated successfully" });
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// });
+      // --- Room check ---
+      if (course.room_id) {
+        const [roomResult] = await connection.execute(
+          `SELECT * FROM room_schedules
+           WHERE room_id = ? AND slot_day = ? AND slot_time = ? AND slot_course = "0"`,
+          [course.room_id, course.slot_day, course.slot_time]
+        );
+
+        if (roomResult.length === 0) {
+          conflict_types.push("room_conflict");
+          console.log("Conflict found in ROOM:", course);
+        }
+      }
+
+      // --- Teacher check ---
+      if (course.teacher_id) {
+        const [teacherResult] = await connection.execute(
+          `SELECT * FROM teacher_schedules
+           WHERE teacher_id = ? AND slot_day = ? AND slot_time = ? AND slot_course = "0"`,
+          [course.teacher_id, course.slot_day, course.slot_time]
+        );
+
+        if (teacherResult.length === 0) {
+          conflict_types.push("teacher_conflict");
+          console.log("Conflict found in TEACHER:", course);
+        }
+      }
+
+      // --- Class check ---
+      if (course.class_id) {
+        const [classResult] = await connection.execute(
+          `SELECT * FROM class_schedules
+           WHERE class_id = ? AND slot_day = ? AND slot_time = ? AND slot_course = "0"`,
+          [course.class_id, course.slot_day, course.slot_time]
+        );
+
+        if (classResult.length === 0) {
+          conflict_types.push("class_conflict");
+          console.log("Conflict found in CLASS:", course);
+        }
+      }
+
+      // If any conflicts, push details
+      if (conflict_types.length > 0) {
+        final_conflict_list.push({
+          ...course,
+          conflicts: conflict_types,
+        });
+      }
+    }
+
+    if (final_conflict_list.length === 0) {
+      return res.status(200).json({ message: "No conflicts found!" });
+    } else {
+      return res.status(409).json({ conflicts: final_conflict_list });
+    }
+  } catch (error) {
+    console.error("Error in final_check_schedule:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  } finally {
+    connection.release();
+  }
+});
 
 // RESET ALL SCHEDULES
 scheduleRouter.delete("/reset-all", async (req, res) => {

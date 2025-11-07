@@ -196,6 +196,8 @@ collegesRouter.get("/", verifyRole(["*"]), async (req, res) => {
   try {
     const { role, id } = req.user;
 
+    console.log(role);
+
     let sql = "";
     let params = [];
 
@@ -223,7 +225,7 @@ collegesRouter.get("/", verifyRole(["*"]), async (req, res) => {
 });
 
 // GET specific college
-collegesRouter.get("/:college_id", async (req, res) => {
+collegesRouter.get("/:college_id", verifyRole(["*"]), async (req, res) => {
   try {
     const { college_id } = req.params;
     const [rows] = await db.execute(
@@ -241,23 +243,27 @@ collegesRouter.get("/:college_id", async (req, res) => {
 });
 
 // Create a college
-collegesRouter.post("/", async (req, res) => {
-  try {
-    const { college_code, college_name, college_major } = req.body;
+collegesRouter.post(
+  "/",
+  verifyRole(["master_scheduler", "admin"]),
+  async (req, res) => {
+    try {
+      const { college_code, college_name, college_major } = req.body;
 
-    const [result] = await db.execute(
-      "INSERT INTO colleges (college_code, college_name, college_major) VALUES (?, ?, ?)",
-      [college_code, college_name, college_major]
-    );
+      const [result] = await db.execute(
+        "INSERT INTO colleges (college_code, college_name, college_major) VALUES (?, ?, ?)",
+        [college_code, college_name, college_major]
+      );
 
-    return res.status(201).json({
-      message: "College successfully inserted",
-      collegeId: result.insertId,
-    });
-  } catch (err) {
-    return res.status(500).json({ message: `Error: ${err.message}` });
+      return res.status(201).json({
+        message: "College successfully inserted",
+        collegeId: result.insertId,
+      });
+    } catch (err) {
+      return res.status(500).json({ message: `Error: ${err.message}` });
+    }
   }
-});
+);
 
 // Update a college
 collegesRouter.put("/:college_id", async (req, res) => {
