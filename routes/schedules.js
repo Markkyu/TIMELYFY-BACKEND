@@ -131,14 +131,14 @@ scheduleRouter.get("/room/:room_id", async (req, res) => {
 scheduleRouter.post("/plot", async (req, res) => {
   const schedules = req.body;
 
-  // console.log(schedules);
-
   if (!Array.isArray(schedules) || schedules.length === 0)
     return res
       .status(400)
       .json({ message: "Newly plotted schedules cannot be empty" });
 
   const conn = await pool.getConnection();
+
+  console.log(schedules);
 
   try {
     await conn.beginTransaction();
@@ -261,10 +261,25 @@ scheduleRouter.post("/unplot", async (req, res) => {
   }
 });
 
+scheduleRouter.get("/merge-courses", async (req, res) => {
+  const sql = `
+    SELECT CONCAT(m.merge_college,c.course_year) as merge_college, m.course_origin
+    FROM merge_courses m
+    INNER JOIN courses c
+    ON m.course_origin = c.course_id
+  `;
+
+  try {
+    const [rows] = await pool.query(sql);
+
+    res.status(200).json(rows);
+  } catch (err) {
+    res.status(500).json({ message: `Error: ${err.message}` });
+  }
+});
+
 scheduleRouter.put("/execute-scheduler", schedulerLimiter, async (req, res) => {
   const newSchedules = req.body;
-
-  console.log(newSchedules);
 
   if (!Array.isArray(newSchedules) || newSchedules.length === 0)
     return res.status(400).json({ message: "Schedules cannot be empty" });
@@ -274,8 +289,6 @@ scheduleRouter.put("/execute-scheduler", schedulerLimiter, async (req, res) => {
       `${process.env.SCHEDULER_API}/update_schedules`,
       newSchedules
     );
-
-    console.log(data);
 
     res.status(200).json(data);
   } catch (error) {
@@ -287,6 +300,8 @@ scheduleRouter.put("/execute-scheduler", schedulerLimiter, async (req, res) => {
 scheduleRouter.put("/final-check-schedule", async (req, res) => {
   const final_schedule = req.body; // array of schedules
   const final_conflict_list = [];
+
+  // console.log(final_schedule);
 
   const connection = await pool.getConnection();
 
