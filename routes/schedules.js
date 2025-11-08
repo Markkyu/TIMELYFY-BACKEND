@@ -3,6 +3,7 @@ const scheduleRouter = express.Router();
 const pool = require("../config/db");
 const axios = require("axios");
 const { schedulerLimiter } = require("../middleware/apiLimiter");
+const { verifyRole } = require("../middleware/authMiddleware");
 
 // ROUTE: /api/schedules
 
@@ -66,6 +67,10 @@ scheduleRouter.get("/college/:classId", async (req, res) => {
 
   try {
     const [rows] = await pool.query(sql, [classId]);
+
+    // if (rows.length === 0)
+    //   return res.status(404).json({ message: "No schedules for this class" });
+
     res.status(200).json(rows);
   } catch (error) {
     res.status(500).json({ message: `Error: ${error.message}` });
@@ -108,6 +113,8 @@ scheduleRouter.get("/room/:room_id", async (req, res) => {
     ON r.room_id = rs.room_id
     INNER JOIN courses c
     ON c.course_id = rs.slot_course
+    INNER JOIN teachers t
+    ON c.assigned_teacher = t.teacher_id
     WHERE rs.slot_course NOT IN ("0","2")
     AND rs.room_id = ?
   `;
@@ -352,30 +359,34 @@ scheduleRouter.put("/final-check-schedule", async (req, res) => {
 });
 
 // RESET ALL SCHEDULES
-scheduleRouter.delete("/reset-all", async (req, res) => {
-  try {
-    await pool.query(
-      `UPDATE class_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
-    );
-    await pool.query(
-      `UPDATE teacher_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
-    );
-    await pool.query(
-      `UPDATE room_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
-    );
+scheduleRouter.delete(
+  "/reset-all",
+  verifyRole(["admin", "master_scheduler"]),
+  async (req, res) => {
+    try {
+      await pool.query(
+        `UPDATE class_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
+      );
+      await pool.query(
+        `UPDATE teacher_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
+      );
+      await pool.query(
+        `UPDATE room_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
+      );
 
-    const [result] = await pool.query(`
+      const [result] = await pool.query(`
       UPDATE courses
       SET is_plotted = 0
     `);
 
-    res.status(200).json({
-      message: `Schedules reset successfully`,
-      affectedRows: result.affectedRows,
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+      res.status(200).json({
+        message: `Schedules reset successfully`,
+        affectedRows: result.affectedRows,
+      });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
   }
-});
+);
 
 module.exports = scheduleRouter;
