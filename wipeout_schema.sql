@@ -148,8 +148,7 @@ CREATE TABLE `colleges` (
   `college_id` int(11) NOT NULL,
   `college_name` text NOT NULL,
   `college_major` varchar(50) NOT NULL,
-  `college_code` varchar(20) DEFAULT NULL,
-  `created_by` int(11) NOT NULL
+  `college_code` varchar(20) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
