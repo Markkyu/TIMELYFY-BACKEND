@@ -380,13 +380,13 @@ scheduleRouter.delete(
   async (req, res) => {
     try {
       await pool.query(
-        `UPDATE class_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
+        `UPDATE class_schedules SET slot_course = '0' WHERE slot_course != '2'`
       );
       await pool.query(
-        `UPDATE teacher_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
+        `UPDATE teacher_schedules SET slot_course = '0' WHERE slot_course != '2'`
       );
       await pool.query(
-        `UPDATE room_schedules SET slot_course = 0 WHERE slot_course NOT IN (2)`
+        `UPDATE room_schedules SET slot_course = '0' WHERE slot_course != '2'`
       );
 
       const [result] = await pool.query(`
